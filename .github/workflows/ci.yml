@@ -12,41 +12,111 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean-action@v1
-        with:
-          build: true
-          use-mathlib-cache: true
+
+      - name: Install pinned Lean and run build
+        shell: bash
+        run: |
+          set +e
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --no-modify-path 2>&1 | tee setup.log
+          setup_status=${PIPESTATUS[1]}
+          export PATH="$HOME/.elan/bin:$PATH"
+          if [ "$setup_status" -eq 0 ]; then
+            lake update 2>&1 | tee update.log
+            update_status=${PIPESTATUS[0]}
+          else
+            update_status=99
+          fi
+          if [ "$update_status" -eq 0 ]; then
+            lake exe cache get 2>&1 | tee cache.log
+            cache_status=${PIPESTATUS[0]}
+          else
+            cache_status=99
+          fi
+          if [ "$cache_status" -eq 0 ]; then
+            lake build 2>&1 | tee build.log
+            build_status=${PIPESTATUS[0]}
+          else
+            build_status=99
+          fi
+          printf '%s\n' "$setup_status" > setup-status.txt
+          printf '%s\n' "$update_status" > update-status.txt
+          printf '%s\n' "$cache_status" > cache-status.txt
+          printf '%s\n' "$build_status" > build-status.txt
+          exit 0
+
       - name: Reject proof holes and custom axioms
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          if grep -RInE '(^|[^A-Za-z])(sorry|admit)([^A-Za-z]|$)|^[[:space:]]*axiom[[:space:]]' AffineGaussianInvariant --include='*.lean'; then
-            echo 'Forbidden proof hole or custom axiom found.'
-            exit 1
+          set +e
+          if grep -RInE '(^|[^A-Za-z])(sorry|admit)([^A-Za-z]|$)|^[[:space:]]*axiom[[:space:]]' AffineGaussianInvariant --include='*.lean' | tee source-scan.txt; then
+            printf '1\n' > source-scan-status.txt
+          else
+            printf '0\n' > source-scan-status.txt
           fi
+          exit 0
+
       - name: Print transitive axiom dependencies
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          lake env lean AffineGaussianInvariant/Audit/ConditionalTheorems.lean 2>&1 | tee axiom-report.txt
-          if grep -E 'sorryAx|Lean\.trustCompiler' axiom-report.txt; then
-            echo 'Forbidden transitive axiom dependency found.'
-            exit 1
+          set +e
+          export PATH="$HOME/.elan/bin:$PATH"
+          if [ "$(cat build-status.txt)" -eq 0 ]; then
+            lake env lean AffineGaussianInvariant/Audit/ConditionalTheorems.lean 2>&1 | tee axiom-report.txt
+            axiom_status=${PIPESTATUS[0]}
+          else
+            echo 'Axiom audit skipped because build failed.' | tee axiom-report.txt
+            axiom_status=99
           fi
+          if grep -E 'sorryAx|Lean\.trustCompiler' axiom-report.txt; then
+            axiom_status=1
+          fi
+          printf '%s\n' "$axiom_status" > axiom-status.txt
+          exit 0
+
       - name: Record pinned environment
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          lean --version | tee lean-version.txt
-          lake --version | tee lake-version.txt
+          set +e
+          export PATH="$HOME/.elan/bin:$PATH"
+          lean --version 2>&1 | tee lean-version.txt
+          lake --version 2>&1 | tee lake-version.txt
           git rev-parse HEAD | tee source-commit.txt
-          test -f lake-manifest.json
+          exit 0
+
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: p27-conditional-as6-audit
           path: |
+            setup.log
+            update.log
+            cache.log
+            build.log
+            setup-status.txt
+            update-status.txt
+            cache-status.txt
+            build-status.txt
+            source-scan.txt
+            source-scan-status.txt
             axiom-report.txt
+            axiom-status.txt
             lean-version.txt
             lake-version.txt
             source-commit.txt
             lake-manifest.json
+
+      - name: Enforce audit result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat setup-status.txt)" -eq 0
+          test "$(cat update-status.txt)" -eq 0
+          test "$(cat cache-status.txt)" -eq 0
+          test "$(cat build-status.txt)" -eq 0
+          test "$(cat source-scan-status.txt)" -eq 0
+          test "$(cat axiom-status.txt)" -eq 0
