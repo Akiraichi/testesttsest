@@ -1,0 +1,6 @@
+tex_id,lean_name,status,scope
+S6.3-S6.5,AffineGaussianInvariant.UnitaryTensorFFT,EXPLICIT_HYPOTHESIS,"pairing-span output only"
+S6.6,AffineGaussianInvariant.restrict_globalValue,KERNEL_CHECKED_PENDING_CI,"finite linear assembly"
+A-S6,AffineGaussianInvariant.sliceRestriction_surjective_of_unitaryTensorFFT,CONDITIONAL_KERNEL_CHECKED_PENDING_CI,"surjectivity conditional on UnitaryTensorFFT"
+S6.3,none,FORMALIZATION_BLOCKED,"general U(r) tensor FFT not proved"
+A-S6 full,none,FORMALIZATION_BLOCKED,"requires concrete S6.3-S6.5 bridge"
