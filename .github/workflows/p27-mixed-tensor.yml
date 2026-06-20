@@ -1,0 +1,25 @@
+name: p27 mixed tensor kernel check
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build-and-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          build: true
+          use-mathlib-cache: true
+      - name: Compile invariant-theory root
+        run: lake env lean AffineGaussianInvariant/InvariantTheory.lean
+      - name: Reject holes and custom axioms
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '(^|[^A-Za-z])(sorry|admit)([^A-Za-z]|$)|^[[:space:]]*axiom[[:space:]]' AffineGaussianInvariant/InvariantTheory --include='*.lean'; then
+            exit 1
+          fi
