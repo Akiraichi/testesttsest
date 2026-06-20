@@ -1,0 +1,35 @@
+name: p27 mixed tensor v3 kernel audit
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  kernel-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          build: true
+          use-mathlib-cache: true
+      - name: Compile clean mixed-tensor library root
+        run: lake env lean AffineGaussianInvariant/InvariantTheoryMixedTensor.lean
+      - name: Print transitive axiom dependencies
+        run: lake env lean AffineGaussianInvariant/InvariantTheory/MixedTensor/AuditV2.lean 2>&1 | tee p27-mixed-tensor-axioms.txt
+      - name: Reject proof holes and custom axioms
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '(^|[^A-Za-z])(sorry|admit)([^A-Za-z]|$)|^[[:space:]]*axiom[[:space:]]' AffineGaussianInvariant/InvariantTheory/MixedTensor/PairingFunctionalsV2.lean AffineGaussianInvariant/InvariantTheory/MixedTensor/FFTContractV2.lean; then
+            exit 1
+          fi
+          if grep -E 'sorryAx|Lean\.trustCompiler' p27-mixed-tensor-axioms.txt; then
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p27-mixed-tensor-v3-audit
+          path: p27-mixed-tensor-axioms.txt
