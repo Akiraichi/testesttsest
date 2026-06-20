@@ -1,0 +1,4 @@
+import AffineGaussianInvariant.InvariantTheory.MixedTensor.PairingFunctionalsV2
+import AffineGaussianInvariant.InvariantTheory.MixedTensor.FFTContractV2
+import AffineGaussianInvariant.InvariantTheory.MixedTensor.S6_3Target
+import AffineGaussianInvariant.InvariantTheory.MixedTensor.BaseCasesV2
