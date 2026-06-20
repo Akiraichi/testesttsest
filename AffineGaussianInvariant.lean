@@ -1,0 +1,2 @@
+import AffineGaussianInvariant.Slice.ConditionalExtension
+import AffineGaussianInvariant.Tests.ConditionalExtension
