@@ -1,0 +1,5 @@
+import AffineGaussianInvariant.InvariantTheoryFull
+
+#print axioms AffineGaussianInvariant.InvariantTheory.MixedTensor.completeContraction_invariant
+#print axioms AffineGaussianInvariant.InvariantTheory.MixedTensor.pairingCombination_invariant
+#print axioms AffineGaussianInvariant.InvariantTheory.MixedTensor.IsPairingGenerated.isInvariant
