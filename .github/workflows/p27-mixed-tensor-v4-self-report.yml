@@ -1,0 +1,67 @@
+name: p27 mixed tensor v4 self report
+
+on:
+  push:
+    branches: ["p27-mixed-tensor-fft"]
+    paths-ignore:
+      - "audit/p27-mixed-tensor-v4-result.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p27-mixed-tensor-fft
+      - uses: leanprover/lean-action@v1
+        id: leanbuild
+        continue-on-error: true
+        with:
+          build: true
+          use-mathlib-cache: true
+      - name: Compile v4 target
+        id: selected
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          lake env lean AffineGaussianInvariant/InvariantTheoryMixedTensorV4.lean 2>&1 | tee v4-build.log
+      - name: Scan selected sources
+        id: scan
+        continue-on-error: true
+        shell: bash
+        run: |
+          ! grep -RInE '(^|[^A-Za-z])(sorry|admit)([^A-Za-z]|$)|^[[:space:]]*axiom[[:space:]]' \
+            AffineGaussianInvariant/InvariantTheory/MixedTensor/PairingFunctionalsV2.lean \
+            AffineGaussianInvariant/InvariantTheory/MixedTensor/FFTContractV2.lean \
+            AffineGaussianInvariant/InvariantTheory/MixedTensor/S6_3Target.lean \
+            AffineGaussianInvariant/InvariantTheory/MixedTensor/BaseCasesV2.lean
+      - name: Write durable result
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p audit
+          {
+            echo "leanbuild=${{ steps.leanbuild.outcome }}"
+            echo "selected=${{ steps.selected.outcome }}"
+            echo "scan=${{ steps.scan.outcome }}"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "lean=$(lean --version | head -1)"
+            echo "--- v4 build tail ---"
+            tail -120 v4-build.log 2>/dev/null || true
+          } > audit/p27-mixed-tensor-v4-result.txt
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add audit/p27-mixed-tensor-v4-result.txt
+          git commit -m "Record p27 mixed-tensor v4 audit" || true
+          git push origin HEAD:p27-mixed-tensor-fft
+      - name: Enforce result
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.selected.outcome }}" = success
+          test "${{ steps.scan.outcome }}" = success
