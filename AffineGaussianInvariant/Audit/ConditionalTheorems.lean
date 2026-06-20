@@ -1,0 +1,6 @@
+import AffineGaussianInvariant
+
+#print axioms AffineGaussianInvariant.restrict_globalValue
+#print axioms AffineGaussianInvariant.sliceRestriction_surjective_of_unitaryTensorFFT
+#print axioms AffineGaussianInvariant.Tests.scalar_unitaryTensorFFT
+#print axioms AffineGaussianInvariant.Tests.scalar_restriction_surjective
